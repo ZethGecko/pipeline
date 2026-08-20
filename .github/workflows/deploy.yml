@@ -8,8 +8,8 @@ on:
 
 env:
   DOCKERHUB_USERNAME: rodrigoapaza
-  BACKEND_IMAGE: rodrigoapaza/netflix-back
-  FRONTEND_IMAGE: rodrigoapaza/netflix-front
+  BACKEND_IMAGE: rodrigoapaza/render_backend
+  FRONTEND_IMAGE: rodrigoapaza/render_frontend
 
 jobs:
   build-test:
