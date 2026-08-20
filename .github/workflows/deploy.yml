@@ -1,0 +1,79 @@
+name: CI/CD - Netflix Big Data Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DOCKERHUB_USERNAME: rodrigoapaza
+  BACKEND_IMAGE: rodrigoapaza/netflix-back
+  FRONTEND_IMAGE: rodrigoapaza/netflix-front
+
+jobs:
+  build-test:
+    name: Build y Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias y test del backend
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm test
+
+      - name: Instalar dependencias y test del frontend
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm test
+
+  docker-build-push:
+    name: Docker Build y Push
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Login en Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build y push imagen backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build y push imagen frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.FRONTEND_IMAGE }}:latest
+
+  deploy-render:
+    name: Deploy en Render
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy backend en Render (Deploy Hook)
+        run: curl -X POST "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK }}"
+
+      - name: Deploy frontend en Render (Deploy Hook)
+        run: curl -X POST "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK }}"
